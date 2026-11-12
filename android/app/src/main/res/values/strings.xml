@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CrossPad</string>
+    <string name="title_activity_main">CrossPad</string>
+    <string name="package_name">com.crosspad.controller</string>
+    <string name="custom_url_scheme">com.crosspad.controller</string>
+</resources>

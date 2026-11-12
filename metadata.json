@@ -1,0 +1,6 @@
+{
+  "name": "CrossPad Converter: スマホコントローラー to DUALSHOCK / Switch",
+  "description": "スマホ画面マッピング式Bluetoothコントローラー（ShootingPlus V3/Flydigi/GameSir等）の入力をDUALSHOCK 4およびNintendo Switchコントローラーにリアルタイム変換・エミュレーション・ハードウェア/ソフトウェアブリッジ生成するスイート",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

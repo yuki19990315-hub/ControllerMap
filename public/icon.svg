@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18181b"/>
+      <stop offset="100%" stop-color="#09090b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#4338ca"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded squircle with safe zone -->
+  <rect width="512" height="512" rx="128" fill="url(#bg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="none" stroke="#27272a" stroke-width="4"/>
+
+  <!-- Controller Body -->
+  <g transform="translate(56, 110)">
+    <path d="M70 70 C 110 50, 160 50, 200 52 C 240 50, 290 50, 330 70 C 370 90, 400 135, 410 200 C 418 250, 390 290, 350 285 C 320 280, 295 220, 270 210 C 245 200, 155 200, 130 210 C 105 220, 80 280, 50 285 C 10 290, -18 250, -10 200 C 0 135, 30 90, 70 70 Z" fill="#27272a" stroke="#3f3f46" stroke-width="6"/>
+
+    <!-- DPad -->
+    <g transform="translate(70, 130)">
+      <rect x="22" y="0" width="16" height="60" rx="4" fill="#3f3f46"/>
+      <rect x="0" y="22" width="60" height="16" rx="4" fill="#3f3f46"/>
+      <circle cx="30" cy="30" r="6" fill="#18181b"/>
+    </g>
+
+    <!-- Action Buttons (CrossPad Style) -->
+    <g transform="translate(270, 130)">
+      <circle cx="30" cy="8" r="10" fill="#10b981"/>
+      <circle cx="52" cy="30" r="10" fill="#f43f5e"/>
+      <circle cx="30" cy="52" r="10" fill="#3b82f6"/>
+      <circle cx="8" cy="30" r="10" fill="#ec4899"/>
+    </g>
+
+    <!-- Central Bluetooth Bridge Wave -->
+    <g transform="translate(180, 90)">
+      <path d="M 20 0 L 20 50 L 35 35 L 5 15 M 5 35 L 35 15 L 20 0" fill="none" stroke="#6366f1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <!-- Glowing Lightbar -->
+    <rect x="150" y="44" width="100" height="8" rx="4" fill="url(#glow)"/>
+  </g>
+</svg>
