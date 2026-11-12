@@ -4,17 +4,20 @@
 
 ---
 
-## 📱 Android APKの自動ビルドについて (GitHub Actions)
+## 📱 Android APKの自動ビルド（GitHub Actions）
 
-本リポジトリには **GitHub Actions 自動ビルドワークフロー (`.github/workflows/build-apk.yml`)** が内蔵されています。
+このリポジトリは **React / Vite → Capacitor → Android APK** の順にGitHub Actionsでビルドします。Node.js 22、Java 21、Android SDK 36を使用します。
 
-### APKの入手方法（超簡単・完全自動）：
-1. このリポジトリをご自身のGitHubアカウントにPushまたはForkします。
-2. GitHubリポジトリの **「Actions」タブ** を開きます。
-3. 自動的に `Build & Package Android APK` ワークフローが走り、約2分でビルドが完了します。
-4. 完了したワークフローの **「Artifacts（成果物）」** に `CrossPad-Android-APK` (`app-debug.apk`) が出力されるので、クリックしてダウンロードしてください！
-5. または **「Releases」タブ** から直接 `app-debug.apk` をダウンロードできます。
+### スマホにインストールする手順
 
+1. [ControllerMap の Actions](https://github.com/yuki19990315-hub/ControllerMap/actions/workflows/build-apk.yml) を開く。
+2. 「Build Android APK」の実行履歴から、**緑のチェックが付いた成功済みの実行**を開く。必要なら「Run workflow」で実行する。
+3. ページ下部の **Artifacts → CrossPad-Android-APK** をダウンロードする（ZIP形式）。
+4. Androidスマホの「ファイル」アプリでZIPを解凍し、**app-debug.apk** を開いてインストールする。求められた場合は、そのファイルを開いたアプリに限り「この提供元のアプリを許可」を有効にする。
+
+- 成果物の保存期間は30日です。**Releasesには自動配布しません。**
+- 生成するのはテスト用の**デバッグ署名付きAPK**です。
+- このAPKはWebアプリをAndroid WebViewで表示します。**Web Bluetooth / WebHIDはAndroid WebViewでそのまま動作するとは限らず、Bluetooth接続やゲームパッド変換機能の実機動作は未確認**です。ネイティブBLE/HIDを利用するには別途Android実装が必要です。
 ---
 
 ## 🌟 主な機能
