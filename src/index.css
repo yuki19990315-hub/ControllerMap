@@ -74,6 +74,12 @@
     max-width: 100%;
   }
 
+  .crosspad-remap-tabs > button {
+    flex-shrink: 0;
+    min-height: 40px;
+    white-space: nowrap;
+  }
+
   .mobile-pad-button {
     display: flex;
     aspect-ratio: 1 / 1;
