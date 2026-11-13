@@ -461,8 +461,17 @@ export default function App() {
     };
   }, [currentProfile.gyroCalibration, handleUpdateGyro, handleStickMove]);
 
+  const sectionInfo = {
+    visualizer: { eyebrow: 'LIVE CONTROLLER', title: '変換モニター', description: 'コントローラーの入力状態をリアルタイムで確認' },
+    remapper: { eyebrow: 'BUTTON CONFIG', title: 'ボタン割り当て', description: '物理ボタンを好きな操作に割り当て' },
+    mapper: { eyebrow: 'TOUCH MAPPING', title: '画面マッピング', description: '画面上の操作位置を編集' },
+    calibration: { eyebrow: 'PRECISION CONTROL', title: '感度・ジャイロ調整', description: 'スティックやセンサーの動作を調整' },
+    telemetry: { eyebrow: 'PACKET INSPECTOR', title: '通信解析', description: '受信した入力データを確認' },
+    bridge: { eyebrow: 'HARDWARE BRIDGE', title: 'PC・ESP32連携', description: '外部機器との接続方法やコード出力' },
+  }[activeTab];
+
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans">
+    <div className="crosspad-app min-h-screen min-w-0 bg-[#080e18] text-slate-100 flex flex-col font-sans">
       {/* 1. Global Navigation Bar */}
       <Navbar
         activeTab={activeTab}
@@ -476,7 +485,18 @@ export default function App() {
       />
 
       {/* 2. Main Content Workspace Container (1440px wide baseline) */}
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <main className="crosspad-workspace relative z-0 mx-auto w-full max-w-7xl min-w-0 flex-1 space-y-4 px-3 pb-28 pt-5 sm:space-y-5 sm:px-6 md:pb-8 lg:px-8">
+        <div className="flex min-w-0 items-end justify-between gap-3 px-1 pb-1">
+          <div className="min-w-0">
+            <p className="mb-1 font-mono text-[10px] font-bold tracking-[0.2em] text-cyan-400/85">{sectionInfo.eyebrow}</p>
+            <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">{sectionInfo.title}</h1>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400 sm:text-sm">{sectionInfo.description}</p>
+          </div>
+          <div className="hidden shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-semibold text-slate-300 sm:flex">
+            <span className={connectedDevices.length ? 'h-2 w-2 rounded-full bg-emerald-400' : 'h-2 w-2 rounded-full bg-amber-400'} />
+            {connectedDevices.length ? connectedDevices.length + '台接続中' : '入力待機中'}
+          </div>
+        </div>
         {/* Device Connector Ribbon */}
         <DeviceConnector
           connectedDevices={connectedDevices}
@@ -500,78 +520,23 @@ export default function App() {
               onStickMove={handleStickMove}
             />
 
-            {/* Quick-Action Android APK Banner */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-emerald-900/50 bg-emerald-950/20 backdrop-blur">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-emerald-950/70 border border-emerald-800/60 text-emerald-400">
-                  <Smartphone className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-white">
-                    AndroidスマートフォンにAPKまたはPWAとして導入
-                  </h3>
-                  <p className="text-xs text-neutral-300">
-                    PWABuilderで30秒で署名済みAPK（.apk）を自動生成、またはChromeから1タップで野良アプリ警告なしにホーム画面アプリ化できます。
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setIsAndroidModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow transition-all whitespace-nowrap shrink-0"
-              >
-                <span>APK化・導入手順</span>
-                <ArrowRight className="h-4 w-4" />
+            {/* Touch-friendly quick actions, secondary to the live controller. */}
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <button type="button" onClick={() => setActiveTab('remapper')} className="group flex min-h-[104px] flex-col items-start justify-between rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.07] p-4 text-left transition hover:bg-cyan-400/15">
+                <Gamepad2 className="h-5 w-5 text-cyan-300" />
+                <span className="flex w-full items-end justify-between gap-1 text-sm font-bold text-white">ボタン割り当て <ArrowRight className="h-4 w-4 shrink-0 text-cyan-300 transition group-hover:translate-x-1" /></span>
               </button>
-            </div>
-
-            {/* Quick-Action V3 Button Remapping Banner */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-neutral-800 bg-neutral-900/60 backdrop-blur">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-emerald-950/60 border border-emerald-800/40 text-emerald-400">
-                  <Gamepad2 className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-white">
-                    ShootingPlus V3 のボタンを自由に割り当てる
-                  </h3>
-                  <p className="text-xs text-neutral-400">
-                    V3のA/B/X/Y/L1/R1/L2/R2等の各ボタンを{targetController === 'DS4' ? 'DUALSHOCK 4 (✕/○/□/△)' : 'Switch Pro (B/A/Y/X)'}の好きなボタンに1対1で自由変更できます。
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setActiveTab('remapper')}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow transition-all whitespace-nowrap shrink-0"
-              >
-                <span>V3ボタン割り当てを開く</span>
-                <ArrowRight className="h-4 w-4" />
+              <button type="button" onClick={() => setActiveTab('mapper')} className="group flex min-h-[104px] flex-col items-start justify-between rounded-2xl border border-violet-400/20 bg-violet-400/[0.07] p-4 text-left transition hover:bg-violet-400/15">
+                <Smartphone className="h-5 w-5 text-violet-300" />
+                <span className="flex w-full items-end justify-between gap-1 text-sm font-bold text-white">画面マッピング <ArrowRight className="h-4 w-4 shrink-0 text-violet-300 transition group-hover:translate-x-1" /></span>
               </button>
-            </div>
-
-            {/* Quick-Action Bridge Banner */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-neutral-800 bg-neutral-900/60 backdrop-blur">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-indigo-950/60 border border-indigo-800/40 text-indigo-400">
-                  <Cpu className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-white">
-                    実機ゲーム（PC/PS4/Switch本体）で今すぐ使いたい場合
-                  </h3>
-                  <p className="text-xs text-neutral-400">
-                    ViGEm PCブリッジ（Windows仮想ドライバ）またはESP32ドングル（USB HID）を使って、OSに本物のコントローラーとしてパススルーできます。
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setIsExportModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow transition-all whitespace-nowrap shrink-0"
-              >
-                <span>連携コードを開く</span>
-                <ArrowRight className="h-4 w-4" />
+              <button type="button" onClick={() => setIsAndroidModalOpen(true)} className="group flex min-h-[104px] flex-col items-start justify-between rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.07] p-4 text-left transition hover:bg-emerald-400/15">
+                <Smartphone className="h-5 w-5 text-emerald-300" />
+                <span className="flex w-full items-end justify-between gap-1 text-sm font-bold text-white">スマホに導入 <ArrowRight className="h-4 w-4 shrink-0 text-emerald-300 transition group-hover:translate-x-1" /></span>
+              </button>
+              <button type="button" onClick={() => setIsExportModalOpen(true)} className="group flex min-h-[104px] flex-col items-start justify-between rounded-2xl border border-blue-400/20 bg-blue-400/[0.07] p-4 text-left transition hover:bg-blue-400/15">
+                <Cpu className="h-5 w-5 text-blue-300" />
+                <span className="flex w-full items-end justify-between gap-1 text-sm font-bold text-white">連携コード出力 <ArrowRight className="h-4 w-4 shrink-0 text-blue-300 transition group-hover:translate-x-1" /></span>
               </button>
             </div>
           </div>
@@ -699,7 +664,7 @@ export default function App() {
         )}
 
         {/* Keyboard Cheatsheet Card (Bottom Drawer) */}
-        <div className="rounded-xl border border-neutral-800/80 bg-neutral-900/40 p-4 text-xs text-neutral-400">
+        <div className="hidden rounded-xl border border-neutral-800/80 bg-neutral-900/40 p-4 text-xs text-neutral-400 md:block">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-neutral-300 font-semibold">
               <Keyboard className="h-4 w-4 text-indigo-400" />
@@ -720,7 +685,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-neutral-800/80 py-4 text-center text-xs text-neutral-500 font-sans">
+      <footer className="hidden w-full border-t border-neutral-800/80 py-4 text-center text-xs text-neutral-500 font-sans md:block">
         CrossPad Protocol · スマホ画面マッピング式Bluetoothコントローラー変換スタジオ
       </footer>
 
