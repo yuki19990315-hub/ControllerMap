@@ -184,7 +184,7 @@ export const V3ButtonRemapper: React.FC<V3ButtonRemapperProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Config Card */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-5 backdrop-blur space-y-4">
+      <div className="rounded-[22px] border border-white/10 bg-[#121d2b]/90 p-4 shadow-xl backdrop-blur space-y-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-neutral-800 pb-3">
           <div>
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
@@ -229,7 +229,7 @@ export const V3ButtonRemapper: React.FC<V3ButtonRemapperProps> = ({
 
         {/* Category Tabs */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          <div className="flex items-center gap-1.5 p-1 bg-neutral-950 rounded-lg border border-neutral-800 text-xs">
+          <div className="crosspad-remap-tabs flex w-full min-w-0 max-w-full items-center gap-1.5 overflow-x-auto rounded-xl border border-white/10 bg-[#0a1422] p-1.5 text-xs md:w-auto">
             <button
               onClick={() => setActiveCategory('all')}
               className={`px-3 py-1 rounded-md transition-colors ${
@@ -317,7 +317,7 @@ export const V3ButtonRemapper: React.FC<V3ButtonRemapperProps> = ({
       </div>
 
       {/* Button Mapping Matrix Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 lg:gap-4">
         {filteredButtons.map(btn => {
           const currentTarget = remapTable[btn.key] || 'none';
           const isPressed = isTargetPressed(currentTarget);
@@ -362,7 +362,7 @@ export const V3ButtonRemapper: React.FC<V3ButtonRemapperProps> = ({
                   <select
                     value={currentTarget}
                     onChange={e => handleAssignButton(btn.key, e.target.value as TargetGamepadButtonKey)}
-                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-neutral-200 focus:border-indigo-500 focus:outline-none"
+                    className="min-w-0 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm text-neutral-200 focus:border-cyan-400 focus:outline-none"
                   >
                     {targetOptions.map(opt => (
                       <option key={opt.key} value={opt.key}>
