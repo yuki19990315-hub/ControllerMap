@@ -11,7 +11,7 @@ permissions:
 jobs:
   build:
     name: Build & Package Android APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout source
@@ -35,8 +35,13 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      # GitHub hosted Ubuntu already includes the Android command-line tools.
+      # setup-android@v3 attempts to install the retired SDK 'tools' package.
+      - name: Accept Android SDK licenses
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=${ANDROID_HOME:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
+          yes | sdkmanager --licenses >/dev/null || true
 
       - name: Install Android SDK 36
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
