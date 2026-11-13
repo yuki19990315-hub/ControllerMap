@@ -21,9 +21,9 @@ export const ControllerVisualizer: React.FC<ControllerVisualizerProps> = ({
   const { buttons, leftStick, rightStick, gyro, ds4 } = state;
 
   return (
-    <div className="w-full space-y-4">
+    <div className="crosspad-controller w-full space-y-4">
       {/* Visualizer Shell */}
-      <div className="relative overflow-hidden rounded-xl border border-neutral-800 bg-neutral-900/60 p-6 backdrop-blur">
+      <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-[#121d2b]/90 p-3 shadow-xl shadow-black/10 backdrop-blur sm:p-6">
         {/* Status Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-neutral-800/80">
           <div className="flex items-center gap-3">
@@ -317,7 +317,7 @@ export const ControllerVisualizer: React.FC<ControllerVisualizerProps> = ({
               </svg>
 
               {/* D-Pad Buttons Overlay (clickable) */}
-              <div className="absolute top-[37%] left-[22.5%] -translate-x-1/2 -translate-y-1/2 w-24 h-24">
+              <div className="controller-touch-overlay absolute top-[37%] left-[22.5%] -translate-x-1/2 -translate-y-1/2 w-24 h-24">
                 {/* Dpad Up */}
                 <button
                   onClick={() => onButtonPress?.('dpadUp', !buttons.dpadUp)}
@@ -365,7 +365,7 @@ export const ControllerVisualizer: React.FC<ControllerVisualizerProps> = ({
               </div>
 
               {/* Action Buttons Overlay (PlayStation Triangle, Circle, Cross, Square) */}
-              <div className="absolute top-[37%] left-[77.5%] -translate-x-1/2 -translate-y-1/2 w-24 h-24">
+              <div className="controller-touch-overlay absolute top-[37%] left-[77.5%] -translate-x-1/2 -translate-y-1/2 w-24 h-24">
                 {/* Triangle (Up) */}
                 <button
                   onClick={() => onButtonPress?.('actionUp', !buttons.actionUp)}
@@ -620,7 +620,7 @@ export const ControllerVisualizer: React.FC<ControllerVisualizerProps> = ({
               </svg>
 
               {/* Switch D-Pad Overlay (BOTTOM LEFT) */}
-              <div className="absolute top-[64%] left-[26%] -translate-x-1/2 -translate-y-1/2 w-22 h-22">
+              <div className="controller-touch-overlay absolute top-[64%] left-[26%] -translate-x-1/2 -translate-y-1/2 w-22 h-22">
                 <button
                   onClick={() => onButtonPress?.('dpadUp', !buttons.dpadUp)}
                   className={`absolute top-0 left-1/2 -translate-x-1/2 w-6 h-7 rounded-t border transition-all ${
@@ -664,7 +664,7 @@ export const ControllerVisualizer: React.FC<ControllerVisualizerProps> = ({
               </div>
 
               {/* Switch Action Buttons (TOP RIGHT: X at Top, A at Right, B at Bottom, Y at Left) */}
-              <div className="absolute top-[37%] left-[76%] -translate-x-1/2 -translate-y-1/2 w-24 h-24">
+              <div className="controller-touch-overlay absolute top-[37%] left-[76%] -translate-x-1/2 -translate-y-1/2 w-24 h-24">
                 {/* Switch X (Top) */}
                 <button
                   onClick={() => onButtonPress?.('actionUp', !buttons.actionUp)}
@@ -716,6 +716,39 @@ export const ControllerVisualizer: React.FC<ControllerVisualizerProps> = ({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Large mobile testing controls: usable without precision taps on the SVG. */}
+        <div className="grid grid-cols-2 gap-3 border-t border-white/10 pt-4 md:hidden">
+          <div className="min-w-0 rounded-2xl border border-white/10 bg-[#0a1422] p-3">
+            <p className="mb-2 text-center text-[11px] font-bold text-slate-300">方向キー</p>
+            <div className="mx-auto grid max-w-[160px] grid-cols-3 gap-1.5">
+              <span />
+              <button type="button" aria-label="上" aria-pressed={buttons.dpadUp} onClick={() => onButtonPress?.('dpadUp', !buttons.dpadUp)} className={buttons.dpadUp ? 'mobile-pad-button bg-cyan-500 text-white' : 'mobile-pad-button bg-white/10 text-slate-200'}>▲</button>
+              <span />
+              <button type="button" aria-label="左" aria-pressed={buttons.dpadLeft} onClick={() => onButtonPress?.('dpadLeft', !buttons.dpadLeft)} className={buttons.dpadLeft ? 'mobile-pad-button bg-cyan-500 text-white' : 'mobile-pad-button bg-white/10 text-slate-200'}>◀</button>
+              <span className="rounded-xl bg-white/5" />
+              <button type="button" aria-label="右" aria-pressed={buttons.dpadRight} onClick={() => onButtonPress?.('dpadRight', !buttons.dpadRight)} className={buttons.dpadRight ? 'mobile-pad-button bg-cyan-500 text-white' : 'mobile-pad-button bg-white/10 text-slate-200'}>▶</button>
+              <span />
+              <button type="button" aria-label="下" aria-pressed={buttons.dpadDown} onClick={() => onButtonPress?.('dpadDown', !buttons.dpadDown)} className={buttons.dpadDown ? 'mobile-pad-button bg-cyan-500 text-white' : 'mobile-pad-button bg-white/10 text-slate-200'}>▼</button>
+              <span />
+            </div>
+          </div>
+          <div className="min-w-0 rounded-2xl border border-white/10 bg-[#0a1422] p-3">
+            <p className="mb-2 text-center text-[11px] font-bold text-slate-300">アクション</p>
+            <div className="mx-auto grid max-w-[160px] grid-cols-3 gap-1.5">
+              <span />
+              <button type="button" aria-label="上アクション" aria-pressed={buttons.actionUp} onClick={() => onButtonPress?.('actionUp', !buttons.actionUp)} className={buttons.actionUp ? 'mobile-pad-button bg-violet-500 text-white' : 'mobile-pad-button bg-white/10 text-violet-300'}>{isDS4 ? '△' : 'X'}</button>
+              <span />
+              <button type="button" aria-label="左アクション" aria-pressed={buttons.actionLeft} onClick={() => onButtonPress?.('actionLeft', !buttons.actionLeft)} className={buttons.actionLeft ? 'mobile-pad-button bg-violet-500 text-white' : 'mobile-pad-button bg-white/10 text-violet-300'}>{isDS4 ? '□' : 'Y'}</button>
+              <span className="rounded-xl bg-white/5" />
+              <button type="button" aria-label="右アクション" aria-pressed={buttons.actionRight} onClick={() => onButtonPress?.('actionRight', !buttons.actionRight)} className={buttons.actionRight ? 'mobile-pad-button bg-violet-500 text-white' : 'mobile-pad-button bg-white/10 text-violet-300'}>{isDS4 ? '○' : 'A'}</button>
+              <span />
+              <button type="button" aria-label="下アクション" aria-pressed={buttons.actionDown} onClick={() => onButtonPress?.('actionDown', !buttons.actionDown)} className={buttons.actionDown ? 'mobile-pad-button bg-violet-500 text-white' : 'mobile-pad-button bg-white/10 text-violet-300'}>{isDS4 ? '✕' : 'B'}</button>
+              <span />
+            </div>
+          </div>
+          <p className="col-span-2 text-center text-[11px] text-slate-500">ボタンをタップして入力のON / OFFを確認</p>
         </div>
 
         {/* Real-time Telemetry Bar */}
