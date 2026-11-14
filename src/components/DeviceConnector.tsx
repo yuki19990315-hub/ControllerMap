@@ -39,7 +39,7 @@ export const DeviceConnector: React.FC<DeviceConnectorProps> = ({
     Promise.all([
       nativeController.addListener('deviceFound', device => {
         setFoundDevices(prev => prev.some(item => item.address === device.address)
-          ? prev : [...prev, device].sort((a, b) => b.rssi - a.rssi).slice(0, 30));
+          ? prev : [...prev, device].sort((a, b) => Number(Boolean(b.likelyV3)) - Number(Boolean(a.likelyV3)) || b.rssi - a.rssi).slice(0, 30));
       }),
       nativeController.addListener('status', event => {
         if (event.status === 'scan_complete') {
@@ -221,7 +221,9 @@ export const DeviceConnector: React.FC<DeviceConnectorProps> = ({
                     <Bluetooth className="h-4 w-4 shrink-0 text-cyan-300" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-bold text-white">{device.name}</p>
+                      {device.likelyV3 && <p className="text-[10px] font-bold text-cyan-300">V3の候補（未確認）</p>}
                       <p className="text-[10px] text-slate-500">{device.address} · {device.rssi} dBm</p>
+                      <p className="text-[10px] text-slate-500">{device.candidateReason || '機器の識別は未確認'}</p>
                     </div>
                     <button type="button" disabled={connecting} onClick={() => void connectNativeDevice(device)}
                       className="min-h-10 shrink-0 rounded-lg bg-cyan-400 px-3 text-xs font-bold text-[#081421] disabled:opacity-50">接続</button>
