@@ -7,6 +7,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(ControllerNativePlugin.class);
+        registerPlugin(UinputBridgePlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
