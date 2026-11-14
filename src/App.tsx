@@ -9,6 +9,8 @@ import {
 } from './types/controller';
 import { PRESET_PROFILES } from './utils/presets';
 import { isNativeAndroid, nativeController } from './utils/nativeController';
+import { uinputBridge } from './utils/uinputBridge';
+import type { UinputStatus } from './utils/uinputBridge';
 import {
   createInitialGamepadState,
   parseShootingPlusV3Packet,
@@ -46,6 +48,11 @@ export default function App() {
   const [selectedProtocol, setSelectedProtocol] = useState<InputProtocolType>('SHOOTING_PLUS_V3');
   const [nativePacketInfo, setNativePacketInfo] = useState<{ count: number; size: number; characteristic: string; hex: string } | null>(null);
   const nativePacketCountRef = useRef(0);
+  const [uinputStatus, setUinputStatus] = useState<UinputStatus | null>(null);
+  const [uinputBusy, setUinputBusy] = useState(false);
+  const [uinputMessage, setUinputMessage] = useState('');
+  const [uinputEnabled, setUinputEnabled] = useState(false);
+  const lastUinputSendRef = useRef(0);
 
   // Modals
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
@@ -194,6 +201,80 @@ export default function App() {
       handles.forEach(handle => void handle.remove());
     };
   }, [handleInjectRawPacket, selectedProtocol]);
+
+  const refreshUinputStatus = async () => {
+    if (!isNativeAndroid) return;
+    try {
+      const result = await uinputBridge.status();
+      setUinputStatus(result);
+      setUinputEnabled(result.virtualPadActive);
+    } catch (error: any) {
+      setUinputMessage('Shizuku状況の確認に失敗: ' + (error?.message || '不明なエラー'));
+    }
+  };
+
+  useEffect(() => {
+    if (!isNativeAndroid) return;
+    void uinputBridge.status()
+      .then(result => {
+        setUinputStatus(result);
+        setUinputEnabled(result.virtualPadActive);
+      })
+      .catch(error => console.warn('Shizuku status unavailable:', error));
+  }, []);
+
+  const authorizeUinput = async () => {
+    setUinputBusy(true);
+    try {
+      await uinputBridge.authorize();
+      setUinputMessage('Shizukuへのアクセスを許可しました。仮想DS4の作成を試せます。');
+      await refreshUinputStatus();
+    } catch (error: any) {
+      setUinputMessage('Shizuku認証失敗: ' + (error?.message || '不明なエラー'));
+    } finally { setUinputBusy(false); }
+  };
+
+  const startUinput = async () => {
+    setUinputBusy(true);
+    try {
+      const result = await uinputBridge.start();
+      setUinputEnabled(result.active);
+      setUinputMessage(result.active
+        ? '仮想ゲームパッドの作成を開始しました (' + result.probe + ')。OS認識とゲーム側での動作確認が必要です。'
+        : '仮想ゲームパッドを開始できませんでした (' + result.probe + ')');
+      await refreshUinputStatus();
+    } catch (error: any) {
+      setUinputEnabled(false);
+      setUinputMessage('仮想DS4の作成失敗: ' + (error?.message || '不明なエラー'));
+    } finally { setUinputBusy(false); }
+  };
+
+  const stopUinput = async () => {
+    setUinputBusy(true);
+    setUinputEnabled(false);
+    try {
+      await uinputBridge.stop();
+      setUinputMessage('仮想ゲームパッドを停止しました。');
+      await refreshUinputStatus();
+    } catch (error: any) {
+      setUinputMessage('停止時のエラー: ' + (error?.message || '不明なエラー'));
+    } finally { setUinputBusy(false); }
+  };
+
+  // Limit uinput RPCs while processing high-rate BLE frames or Gamepad API input.
+  useEffect(() => {
+    if (!isNativeAndroid || !uinputEnabled) return;
+    const now = Date.now();
+    if (now - lastUinputSendRef.current < 32) return;
+    lastUinputSendRef.current = now;
+    void uinputBridge.submit({
+      state: JSON.stringify({
+        buttons: gamepadState.buttons,
+        leftStick: gamepadState.leftStick,
+        rightStick: gamepadState.rightStick,
+      }),
+    }).catch(error => console.warn('uinput submit failed:', error));
+  }, [gamepadState, uinputEnabled]);
 
   // Update Gyro Sensor Tilt
   const handleUpdateGyro = useCallback((pitch: number, roll: number, yaw: number) => {
@@ -571,7 +652,7 @@ export default function App() {
           <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 text-xs leading-relaxed text-amber-100">
             <p className="font-bold">Android ネイティブBLE診断モード</p>
             <p className="mt-1 text-amber-100/75">
-              V3の検出・接続と入力確認を行います。rootなしで別アプリにDUALSHOCK 4として認識させる機能はありません。
+              V3の検出・接続と入力確認を行います。通常のAPK単独では他のゲームにDS4として認識させられません。下のShizuku実験機能には端末依存の制限があります。
             </p>
             {nativePacketInfo && (
               <div className="mt-2 space-y-1 rounded-lg bg-black/20 p-2 font-mono text-[11px] text-cyan-200">
@@ -581,6 +662,50 @@ export default function App() {
                 {nativePacketInfo.size !== 16 && <div className="font-sans text-amber-200">16バイト形式と異なるため、ボタン解析は保留中です。</div>}
               </div>
             )}
+          </div>
+        )}
+
+        {isNativeAndroid && (
+          <div className="space-y-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.045] p-4 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-bold text-white">Shizukuで仮想DS4をテスト</p>
+                <p className="mt-1 leading-relaxed text-slate-400">root不要・開発者向け実験機能。Androidのuinputにアクセスできる機種のみ。</p>
+              </div>
+              <span className={uinputEnabled ? 'rounded-full bg-emerald-400/15 px-2.5 py-1 text-[11px] font-bold text-emerald-300' : 'rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-slate-400'}>
+                {uinputEnabled ? '仮想入力ON' : '未起動'}
+              </span>
+            </div>
+            <p className="leading-relaxed text-slate-400">
+              Shizukuをインストールしてワイヤレスデバッグから起動後、権限を許可してください。
+              <a href="https://shizuku.rikka.app/download/" target="_blank" rel="noreferrer" className="ml-1 font-semibold text-cyan-300 underline underline-offset-2">公式Shizukuの入手先</a>
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-lg border border-white/10 bg-[#0b1422] px-2.5 py-2 text-slate-200">
+                Shizuku: {uinputStatus?.shizukuRunning ? '稼働中' : '未稼働 / 未検出'}
+              </span>
+              <span className="rounded-lg border border-white/10 bg-[#0b1422] px-2.5 py-2 text-slate-200">
+                権限: {uinputStatus?.authorized ? '許可済み' : '未許可'}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              <button type="button" onClick={() => void refreshUinputStatus()} disabled={uinputBusy} className="min-h-11 rounded-xl border border-white/10 bg-white/5 px-3 font-semibold text-white">状況を確認</button>
+              <button type="button" onClick={() => void authorizeUinput()} disabled={uinputBusy || !uinputStatus?.shizukuRunning} className="min-h-11 rounded-xl border border-cyan-400/25 bg-cyan-400/10 px-3 font-semibold text-cyan-200 disabled:opacity-50">権限を許可</button>
+              {!uinputEnabled ? (
+                <button type="button" onClick={() => void startUinput()} disabled={uinputBusy || !uinputStatus?.authorized || targetController !== 'DS4'} className="min-h-11 rounded-xl bg-cyan-400 px-3 font-bold text-[#071321] disabled:opacity-40">
+                  仮想DS4を作成
+                </button>
+              ) : (
+                <button type="button" onClick={() => void stopUinput()} disabled={uinputBusy} className="min-h-11 rounded-xl border border-rose-400/30 bg-rose-400/10 px-3 font-bold text-rose-200">
+                  仮想DS4を停止
+                </button>
+              )}
+            </div>
+            {targetController !== 'DS4' && <p className="text-amber-300">DS4モードを選択すると実験機能を開始できます。</p>}
+            {uinputMessage && <p role="status" aria-live="polite" className="break-words rounded-xl border border-white/10 bg-[#0b1422] p-3 leading-relaxed text-slate-200">{uinputMessage}</p>}
+            <p className="leading-relaxed text-slate-500">
+              これはDS4互換の仮想入力機器の生成テストです。完全なSony製DS4のHIDエミュレーションや、特定ゲームでの認識・動作は未検証です。設定が有効になったら「OS認識を更新」で機器名とVID/PIDを確認してください。
+            </p>
           </div>
         )}
 
