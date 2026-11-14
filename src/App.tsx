@@ -48,6 +48,7 @@ export default function App() {
   const [selectedProtocol, setSelectedProtocol] = useState<InputProtocolType>('SHOOTING_PLUS_V3');
   const [nativePacketInfo, setNativePacketInfo] = useState<{ count: number; size: number; characteristic: string; hex: string } | null>(null);
   const nativePacketCountRef = useRef(0);
+  const lastValidNativePacketAtRef = useRef(0);
   const [uinputStatus, setUinputStatus] = useState<UinputStatus | null>(null);
   const [uinputBusy, setUinputBusy] = useState(false);
   const [uinputMessage, setUinputMessage] = useState('');
@@ -171,6 +172,7 @@ export default function App() {
           });
         }
         if (selectedProtocol === 'SHOOTING_PLUS_V3' && bytes.length === 16 && packet.characteristic.toLowerCase() === '0000ffe1-0000-1000-8000-00805f9b34fb') {
+          lastValidNativePacketAtRef.current = Date.now();
           handleInjectRawPacket(bytes);
         }
       }),
@@ -416,7 +418,7 @@ export default function App() {
         candidate && candidate.connected && !candidate.id.toLowerCase().includes('crosspad')
       );
 
-      if (gp && gp.connected) {
+      if (gp && gp.connected && Date.now() - lastValidNativePacketAtRef.current > 500) {
         // Auto register to connected devices list if not yet present
         setConnectedDevices(prev => {
           if (!prev.some(d => d.id === gp.id)) {
