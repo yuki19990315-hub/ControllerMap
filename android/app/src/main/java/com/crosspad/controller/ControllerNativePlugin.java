@@ -14,6 +14,7 @@ import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
@@ -60,6 +61,7 @@ public class ControllerNativePlugin extends Plugin {
     private BluetoothLeScanner scanner;
     private boolean scanning;
     private BluetoothGatt activeGatt;
+    private volatile boolean gattConnected;
     private String activeAddress;
     private String activeName;
 
@@ -260,6 +262,7 @@ public class ControllerNativePlugin extends Plugin {
                 return;
             }
             if (status == BluetoothGatt.GATT_SUCCESS && state == BluetoothProfile.STATE_CONNECTED) {
+                gattConnected = true;
                 emitStatus("connected", "", "");
                 try {
                     if (!gatt.discoverServices()) emitStatus("error", "", "GATTサービス検索に失敗");
@@ -267,6 +270,7 @@ public class ControllerNativePlugin extends Plugin {
                     emitStatus("error", "", exception.getMessage());
                 }
             } else {
+                gattConnected = false;
                 emitStatus(status == BluetoothGatt.GATT_SUCCESS ? "disconnected" : "error",
                     "", "GATT status: " + status);
                 closeGatt();
@@ -374,11 +378,56 @@ public class ControllerNativePlugin extends Plugin {
     }
 
     private void closeGatt() {
+        gattConnected = false;
+        stopKeepAlive();
         BluetoothGatt old = activeGatt;
         activeGatt = null;
         if (old != null) {
             try { old.disconnect(); } catch (SecurityException ignored) { }
             old.close();
+        }
+    }
+
+    private void stopKeepAlive() {
+        try { getContext().stopService(new Intent(getContext(), ControllerLinkService.class)); }
+        catch (RuntimeException ignored) { }
+    }
+
+    @PluginMethod
+    public void connectionKeepAliveStatus(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("active", ControllerLinkService.isRunning());
+        result.put("gattConnected", gattConnected);
+        result.put("hasActiveGatt", activeGatt != null);
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void setConnectionKeepAlive(PluginCall call) {
+        boolean enabled = Boolean.TRUE.equals(call.getBoolean("enabled", false));
+        if (!enabled) {
+            stopKeepAlive();
+            JSObject result = new JSObject();
+            result.put("active", false);
+            call.resolve(result);
+            return;
+        }
+        if (activeGatt == null || !gattConnected) {
+            call.reject("先にBLE機器へ接続してください");
+            return;
+        }
+        if (!permissionsGranted()) {
+            call.reject("Bluetoothの付近のデバイス権限が必要です");
+            return;
+        }
+        try {
+            Intent intent = new Intent(getContext(), ControllerLinkService.class);
+            ContextCompat.startForegroundService(getContext(), intent);
+            JSObject result = new JSObject();
+            result.put("active", true);
+            call.resolve(result);
+        } catch (RuntimeException error) {
+            call.reject("接続保持サービスの開始に失敗: " + error.getMessage());
         }
     }
 
