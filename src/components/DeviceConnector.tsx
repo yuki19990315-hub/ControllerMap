@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ConnectedDevice, InputProtocolType } from '../types/controller';
+import { isNativeAndroid, nativeController } from '../utils/nativeController';
+import type { NativeBleDevice, SystemGamepad } from '../utils/nativeController';
 import { Bluetooth, Usb, Gamepad2, Keyboard, CircleCheck, ChevronDown, Link2, Wifi, AlertCircle } from 'lucide-react';
 
 interface DeviceConnectorProps {
@@ -22,8 +24,93 @@ export const DeviceConnector: React.FC<DeviceConnectorProps> = ({
   const [connecting, setConnecting] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [foundDevices, setFoundDevices] = useState<NativeBleDevice[]>([]);
+  const [scanning, setScanning] = useState(false);
+  const [systemGamepads, setSystemGamepads] = useState<SystemGamepad[]>([]);
+
+  useEffect(() => {
+    if (!isNativeAndroid) return;
+    let disposed = false;
+    const handles: Array<{ remove(): Promise<void> }> = [];
+    nativeController.systemGamepads()
+      .then(result => { if (!disposed) setSystemGamepads(result.devices); })
+      .catch(error => console.warn('InputDevice enumeration failed:', error));
+
+    Promise.all([
+      nativeController.addListener('deviceFound', device => {
+        setFoundDevices(prev => prev.some(item => item.address === device.address)
+          ? prev : [...prev, device].sort((a, b) => b.rssi - a.rssi).slice(0, 30));
+      }),
+      nativeController.addListener('status', event => {
+        if (event.status === 'scan_complete') {
+          setScanning(false);
+          setStatusMessage('周辺機器の検索が完了しました。該当する機器を選んでください。');
+        } else if (event.status === 'connecting') {
+          setStatusMessage('Bluetoothに接続しています…');
+        } else if (event.status === 'connected') {
+          setConnecting(false);
+          setStatusMessage('BLE接続済み。GATT通知を確認しています…');
+        } else if (event.status === 'notifications_ready') {
+          setConnecting(false);
+          setStatusMessage('BLE入力通知を受信する準備ができました。V3のボタンを押してみてください。');
+        } else if (event.status === 'no_notifications') {
+          setConnecting(false);
+          setStatusMessage('BLE接続済みですが、通知できる特性が見つかりません。接続方式が異なる可能性があります。');
+        } else if (event.status === 'disconnected') {
+          setConnecting(false);
+          setStatusMessage('BLE接続を切断しました。');
+        } else if (event.status === 'error') {
+          setConnecting(false);
+          setScanning(false);
+          setStatusMessage('BLEエラー: ' + (event.detail || '操作に失敗しました'));
+        }
+      }),
+    ]).then(registered => {
+      if (disposed) registered.forEach(handle => void handle.remove());
+      else handles.push(...registered);
+    }).catch(error => console.warn('BLE listener setup error:', error));
+    return () => {
+      disposed = true;
+      handles.forEach(handle => void handle.remove());
+    };
+  }, []);
+
+  const refreshSystemGamepads = async () => {
+    try {
+      const result = await nativeController.systemGamepads();
+      setSystemGamepads(result.devices);
+      setStatusMessage(result.devices.length
+        ? 'Androidが認識しているゲームパッドを検出しました。'
+        : 'Androidが認識しているゲームパッドはありません。先にOS設定でペアリングしてください。');
+    } catch (error: any) {
+      setStatusMessage('入力機器確認エラー: ' + (error?.message || '不明なエラー'));
+    }
+  };
+
+  const connectNativeDevice = async (device: NativeBleDevice) => {
+    setConnecting(true);
+    setStatusMessage(device.name + ' に接続しています…');
+    try {
+      await nativeController.connect({ address: device.address, name: device.name });
+    } catch (error: any) {
+      setConnecting(false);
+      setStatusMessage('接続失敗: ' + (error?.message || '不明なエラー'));
+    }
+  };
 
   const handleBLEClick = async () => {
+    if (isNativeAndroid) {
+      setFoundDevices([]);
+      setScanning(true);
+      setStatusMessage('周辺のBLE機器を検索中…（最大12秒）');
+      try {
+        await nativeController.scan();
+      } catch (error: any) {
+        setScanning(false);
+        setStatusMessage('スキャン失敗: ' + (error?.message || '不明なエラー'));
+      }
+      return;
+    }
     setConnecting(true);
     setStatusMessage('Bluetooth LE デバイスを検索しています…');
     try {
@@ -87,15 +174,15 @@ export const DeviceConnector: React.FC<DeviceConnectorProps> = ({
         </div>
 
         <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-          <button type="button" disabled={connecting || !isBLESupported} onClick={handleBLEClick} className="group flex min-h-[112px] flex-col items-start gap-2 rounded-2xl border border-cyan-400/20 bg-cyan-500/[0.07] p-3 text-left transition hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-[108px] sm:p-4">
+          <button type="button" disabled={connecting || scanning || (!isBLESupported && !isNativeAndroid)} onClick={handleBLEClick} className="group flex min-h-[112px] flex-col items-start gap-2 rounded-2xl border border-cyan-400/20 bg-cyan-500/[0.07] p-3 text-left transition hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-[108px] sm:p-4">
             <Bluetooth className="h-5 w-5 shrink-0 text-cyan-300" />
             <span className="text-sm font-bold text-white">Bluetooth</span>
-            <span className="text-[11px] leading-snug text-slate-400">{isBLESupported ? 'BLEを探して接続' : 'この環境では非対応'}</span>
+            <span className="text-[11px] leading-snug text-slate-400">{isNativeAndroid ? (scanning ? '検索中…' : '周辺のBLE機器を検索') : isBLESupported ? 'BLEを探して接続' : 'この環境では非対応'}</span>
           </button>
-          <button type="button" disabled={connecting || !isHIDSupported} onClick={handleHIDClick} className="flex min-h-[112px] flex-col items-start gap-2 rounded-2xl border border-blue-400/20 bg-blue-500/[0.07] p-3 text-left transition hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-[108px] sm:p-4">
+          <button type="button" disabled={connecting || !isHIDSupported || isNativeAndroid} onClick={handleHIDClick} className="flex min-h-[112px] flex-col items-start gap-2 rounded-2xl border border-blue-400/20 bg-blue-500/[0.07] p-3 text-left transition hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-[108px] sm:p-4">
             <Usb className="h-5 w-5 shrink-0 text-blue-300" />
             <span className="text-sm font-bold text-white">USB / HID</span>
-            <span className="text-[11px] leading-snug text-slate-400">{isHIDSupported ? 'HIDデバイスを探す' : 'この環境では非対応'}</span>
+            <span className="text-[11px] leading-snug text-slate-400">{isNativeAndroid ? 'Androidの設定でペアリング' : isHIDSupported ? 'HIDデバイスを探す' : 'この環境では非対応'}</span>
           </button>
           <div className="flex min-h-[112px] flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:min-h-[108px] sm:p-4">
             <Gamepad2 className="h-5 w-5 shrink-0 text-emerald-300" />
@@ -108,6 +195,45 @@ export const DeviceConnector: React.FC<DeviceConnectorProps> = ({
             <span className="text-[11px] leading-snug text-slate-400">デモ入力を追加</span>
           </button>
         </div>
+        {isNativeAndroid && (
+          <div className="mt-4 space-y-3 rounded-xl border border-cyan-400/15 bg-[#0b1726] p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-bold text-cyan-200">Android BLE 接続先</p>
+              <button type="button" onClick={() => void refreshSystemGamepads()} className="min-h-10 rounded-lg border border-white/10 px-3 text-[11px] font-bold text-slate-200">
+                OS認識を更新
+              </button>
+            </div>
+            {systemGamepads.length > 0 && (
+              <div className="space-y-1 rounded-lg border border-emerald-400/20 bg-emerald-400/5 p-2 text-xs text-emerald-100">
+                <p className="font-bold">Androidが認識しているゲームパッド</p>
+                {systemGamepads.map(device => <p key={device.id} className="break-all">{device.name}（VID: {device.vendorId}, PID: {device.productId}）</p>)}
+                <p className="text-[11px] text-slate-300">認識の確認であり、DS4としての偽装を意味しません。</p>
+              </div>
+            )}
+            {foundDevices.length === 0 ? (
+              <p className="text-xs leading-relaxed text-slate-400">
+                Bluetoothを押してV3を検索してください。表示されない場合はOSのBluetooth設定で接続可能なモードを確認してください。
+              </p>
+            ) : (
+              <div className="max-h-60 space-y-2 overflow-y-auto">
+                {foundDevices.map(device => (
+                  <div key={device.address} className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+                    <Bluetooth className="h-4 w-4 shrink-0 text-cyan-300" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-white">{device.name}</p>
+                      <p className="text-[10px] text-slate-500">{device.address} · {device.rssi} dBm</p>
+                    </div>
+                    <button type="button" disabled={connecting} onClick={() => void connectNativeDevice(device)}
+                      className="min-h-10 shrink-0 rounded-lg bg-cyan-400 px-3 text-xs font-bold text-[#081421] disabled:opacity-50">接続</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-[11px] leading-relaxed text-slate-400">
+              BLEでの入力取得と、ゲームにDUALSHOCK 4として認識させることは別の機能です。
+            </p>
+          </div>
+        )}
       </div>
 
       {statusMessage && (
