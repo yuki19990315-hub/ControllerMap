@@ -1,6 +1,6 @@
 # CrossPad Converter: スマホコントローラー to DUALSHOCK / Switch
 
-スマホ画面マッピング式Bluetoothコントローラー（**ShootingPlus V3**、Flydigi、GameSirなど）のBLE通知パケットを、**DUALSHOCK 4 (PS4)** および **Nintendo Switch Proコントローラー** のHID標準信号にリアルタイム変換・エミュレーション・ハードウェア/ソフトウェアブリッジ出力するアプリケーションです。
+スマホ用Bluetoothコントローラーの入力を診断・マッピングするツールです。Android版ではネイティブBLE通信に加え、**Shizuku + Android uinput経由の実験的な仮想DS4互換ゲームパッド**を試せます。V3の実機入力形式、DS4互換性、別ゲームでの利用は未検証です。
 
 ---
 
@@ -17,7 +17,7 @@
 
 - 成果物の保存期間は30日です。**Releasesには自動配布しません。**
 - 生成するのはテスト用の**デバッグ署名付きAPK**です。
-- このAPKはWebアプリをAndroid WebViewで表示します。**Web Bluetooth / WebHIDはAndroid WebViewでそのまま動作するとは限らず、Bluetooth接続やゲームパッド変換機能の実機動作は未確認**です。ネイティブBLE/HIDを利用するには別途Android実装が必要です。
+- このAPKはWebViewを基盤としますが、Bluetooth LE用の**ネイティブAndroidプラグインを追加済み**です。Android実機での動作検証は未実施です。WebHIDはWebViewからの利用を保証しません。
 ---
 
 ## Android（root不要）でのBLE入力診断
@@ -33,10 +33,24 @@
 **制約と判定基準**
 - この段階で実装されているのは **BLEスキャン／接続／GATT通知／入力診断** です。実機V3のサービスUUIDやパケット形式は検証されておらず、接続できるとは限りません。端末やコントローラーによってはBLEではなく別のBluetooth/HID接続方式が必要です。
 - 16バイトのV3形式を前提とする既存パーサーはありますが、対応する実機形式であることの確認が必要です。未知の入力形式はRAW HEXとして確認し、形式を決めつけません。
-- **このAPKはAndroid上の他のゲームへDUALSHOCK 4として入力を注入・偽装できません。** Androidの通常権限、開発者向けオプション、Shizukuだけでは一般的なDS4仮想デバイスを生成できません。対応を約束するものではありません。
+- Androidの**通常APK単独**では、他アプリにDS4入力を送れません。新たに**Shizukuのshell権限からuinputを操作して仮想ゲームパッドを作る試験機能**を追加しました。ただしこの機能は端末側のuinput権限・SELinux設定、ゲーム側の入力対応に依存し、公式DS4と完全一致するHID実装ではありません。Nothing Phone (4a) Proでは未検証です。
 - Androidが元のV3を標準Gamepadとして認識した場合でも、DUALSHOCK 4として認識されたことを意味しません。
 - AndroidのBluetooth HID Device APIは**他のホスト機器へ**入力する機能です。同じAndroid端末内のゲームに対するDS4偽装とは異なります。
 - 操作入力を他のAndroidアプリへ渡す方法の評価には、実機の入力方式と、対象ゲームの標準Gamepad対応状況を確認する必要があります。
+
+## Shizukuを使った仮想DS4テスト（実験機能）
+
+Androidの標準ゲームパッドとして認識させる手段を検証するため、Android本体をroot化せずにShizukuのADB shell権限から `/dev/uinput` を利用する試験機能を作成しました。
+
+1. [Shizuku公式サイト](https://shizuku.rikka.app/download/)からインストールします。
+2. Androidの**開発者向けオプション → ワイヤレスデバッグ**を有効化し、Shizukuの公式手順でサービスを起動します（再起動後は起動し直す必要があります）。
+3. CrossPadの「Shizukuで仮想DS4をテスト」欄で**状況を確認 → 権限を許可 → 仮想DS4を作成**を選びます。
+4. **入力デバイス → OS認識を更新**で、Androidが仮想InputDeviceを認識したか確認します。もし作成に失敗したら、画面に表示される `uid` と `/dev/uinput` の確認結果を調べます。
+5. 機能テスト後は**仮想DS4を停止**してください。
+
+**注意:** これはuinputによるDS4互換の入力イベントテストであり、SonyのBluetoothペアリング・タッチパッド・ジャイロ・振動などを再現する完全なDUALSHOCK 4 HIDスタックではありません。DS4としてゲームに認識されるか、他アプリへの入力が継続するか、V3実機との統合については未検証です。Androidの入出力・省電力制約によりバックグラウンドでBLE更新が止まる可能性があります。uinputへのアクセスが禁止される端末ではroot化せずにこの方式を使えない場合があります。
+
+コードの参考資料：[Android uinput公式使用方法](https://android.googlesource.com/platform/frameworks/base/+/HEAD/cmds/uinput/README.md)、[Shizuku公式API](https://github.com/RikkaApps/Shizuku-API)。
 
 ---
 
