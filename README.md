@@ -20,6 +20,26 @@
 - このAPKはWebアプリをAndroid WebViewで表示します。**Web Bluetooth / WebHIDはAndroid WebViewでそのまま動作するとは限らず、Bluetooth接続やゲームパッド変換機能の実機動作は未確認**です。ネイティブBLE/HIDを利用するには別途Android実装が必要です。
 ---
 
+## Android（root不要）でのBLE入力診断
+
+新しいAPKでは、Android WebView上のWeb Bluetoothに依存せず、AndroidネイティブのBLEスキャンとGATT通知取得を試せます。
+
+1. APKをインストールし、AndroidでBluetoothをオンにします。
+2. **入力デバイス → 接続する → Bluetooth** を開き、初回は「付近のデバイス」を許可します。
+3. 一覧からV3に該当するBLE機器を選び、**接続** を押します。
+4. 変換モニターの「Android ネイティブBLE診断モード」で、受信件数・バイト数・特性UUID・HEXデータを確認します。
+5. AndroidのBluetooth設定で通常のゲームパッドとしてペアリング済みの場合は **OS認識を更新** で、Androidが列挙するInputDeviceを確認できます。
+
+**制約と判定基準**
+- この段階で実装されているのは **BLEスキャン／接続／GATT通知／入力診断** です。実機V3のサービスUUIDやパケット形式は検証されておらず、接続できるとは限りません。端末やコントローラーによってはBLEではなく別のBluetooth/HID接続方式が必要です。
+- 16バイトのV3形式を前提とする既存パーサーはありますが、対応する実機形式であることの確認が必要です。未知の入力形式はRAW HEXとして確認し、形式を決めつけません。
+- **このAPKはAndroid上の他のゲームへDUALSHOCK 4として入力を注入・偽装できません。** Androidの通常権限、開発者向けオプション、Shizukuだけでは一般的なDS4仮想デバイスを生成できません。対応を約束するものではありません。
+- Androidが元のV3を標準Gamepadとして認識した場合でも、DUALSHOCK 4として認識されたことを意味しません。
+- AndroidのBluetooth HID Device APIは**他のホスト機器へ**入力する機能です。同じAndroid端末内のゲームに対するDS4偽装とは異なります。
+- 操作入力を他のAndroidアプリへ渡す方法の評価には、実機の入力方式と、対象ゲームの標準Gamepad対応状況を確認する必要があります。
+
+---
+
 ## 🌟 主な機能
 
 1. **ShootingPlus V3 自由ボタン再配置 (Remapping)**:
