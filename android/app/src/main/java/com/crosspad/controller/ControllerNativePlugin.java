@@ -187,6 +187,20 @@ public class ControllerNativePlugin extends Plugin {
                 found.put("address", address);
                 found.put("name", name);
                 found.put("rssi", result.getRssi());
+                boolean advertisedV3 = false;
+                if (result.getScanRecord() != null &&
+                        result.getScanRecord().getServiceUuids() != null) {
+                    for (android.os.ParcelUuid id : result.getScanRecord().getServiceUuids()) {
+                        if (V3_SERVICE.equals(id.getUuid())) { advertisedV3 = true; break; }
+                    }
+                }
+                String lower = name.toLowerCase(java.util.Locale.ROOT);
+                boolean nameMatch = lower.contains("shootingplus")
+                    || lower.contains("shooting plus")
+                    || lower.matches("(^|.*[^a-z0-9])v3([^a-z0-9].*|$)");
+                found.put("likelyV3", advertisedV3 || nameMatch);
+                found.put("candidateReason", advertisedV3 ? "広告されたBLEサービスUUIDが候補と一致"
+                    : nameMatch ? "機器名がV3関連の候補に一致" : "V3である証拠なし");
                 notifyListeners("deviceFound", found);
             } catch (SecurityException ignored) {
                 emitStatus("error", "", "Bluetooth の権限を確認してください");
