@@ -410,7 +410,11 @@ export default function App() {
 
     const pollGamepads = () => {
       const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-      const gp = gamepads[0] || gamepads[1];
+      // Never ingest our own experimental uinput device; that would create a
+      // feedback loop when its output is forwarded into the virtual pad.
+      const gp = Array.from(gamepads).find(candidate =>
+        candidate && candidate.connected && !candidate.id.toLowerCase().includes('crosspad')
+      );
 
       if (gp && gp.connected) {
         // Auto register to connected devices list if not yet present
