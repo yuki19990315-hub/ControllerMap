@@ -8,6 +8,7 @@ import {
   ScreenMappingNode,
 } from './types/controller';
 import { PRESET_PROFILES } from './utils/presets';
+import { isNativeAndroid, nativeController } from './utils/nativeController';
 import {
   createInitialGamepadState,
   parseShootingPlusV3Packet,
@@ -43,6 +44,8 @@ export default function App() {
   const [gamepadState, setGamepadState] = useState<GamepadState>(createInitialGamepadState());
   const [connectedDevices, setConnectedDevices] = useState<ConnectedDevice[]>([]);
   const [selectedProtocol, setSelectedProtocol] = useState<InputProtocolType>('SHOOTING_PLUS_V3');
+  const [nativePacketInfo, setNativePacketInfo] = useState<{ count: number; size: number; characteristic: string; hex: string } | null>(null);
+  const nativePacketCountRef = useRef(0);
 
   // Modals
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
@@ -140,6 +143,57 @@ export default function App() {
     },
     [currentProfile]
   );
+
+  // Native Android BLE bridge: diagnose incoming raw data and use the existing V3
+  // parser only for 16-byte frames. Other formats remain unverified, not guessed.
+  useEffect(() => {
+    if (!isNativeAndroid) return;
+    let disposed = false;
+    const handles: Array<{ remove(): Promise<void> }> = [];
+    Promise.all([
+      nativeController.addListener('packet', packet => {
+        const bytes = packet.bytes;
+        if (!Array.isArray(bytes)) return;
+        const count = ++nativePacketCountRef.current;
+        if (count === 1 || count % 12 === 0) {
+          setNativePacketInfo({
+            count,
+            size: bytes.length,
+            characteristic: packet.characteristic,
+            hex: bytes.slice(0, 32).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' '),
+          });
+        }
+        if (selectedProtocol === 'SHOOTING_PLUS_V3' && bytes.length === 16) {
+          handleInjectRawPacket(bytes);
+        }
+      }),
+      nativeController.addListener('status', event => {
+        if (!event.address) return;
+        const deviceId = 'native_ble_' + event.address;
+        if (event.status === 'connected' || event.status === 'notifications_ready' || event.status === 'no_notifications') {
+          setConnectedDevices(prev => [
+            ...prev.filter(d => d.id !== deviceId && !d.id.startsWith('native_ble_')),
+            {
+              id: deviceId,
+              name: event.name || 'Android BLEコントローラー',
+              type: 'ble',
+              protocol: selectedProtocol,
+              connected: true,
+            },
+          ]);
+        } else if (event.status === 'disconnected' || event.status === 'error') {
+          setConnectedDevices(prev => prev.filter(d => d.id !== deviceId));
+        }
+      }),
+    ]).then(registered => {
+      if (disposed) registered.forEach(handle => void handle.remove());
+      else handles.push(...registered);
+    }).catch(error => console.warn('Native controller listener registration failed:', error));
+    return () => {
+      disposed = true;
+      handles.forEach(handle => void handle.remove());
+    };
+  }, [handleInjectRawPacket, selectedProtocol]);
 
   // Update Gyro Sensor Tilt
   const handleUpdateGyro = useCallback((pitch: number, roll: number, yaw: number) => {
@@ -242,6 +296,9 @@ export default function App() {
 
   // Disconnect Device
   const handleDisconnectDevice = (id: string) => {
+    if (id.startsWith('native_ble_') && isNativeAndroid) {
+      void nativeController.disconnect().catch(error => console.warn('Native BLE disconnect failed:', error));
+    }
     if (bleServerRef.current) {
       try {
         bleServerRef.current.disconnect();
@@ -509,6 +566,23 @@ export default function App() {
           isHIDSupported={isHIDSupported}
           onSimulateVirtualDevice={handleSimulateVirtualDevice}
         />
+
+        {isNativeAndroid && (
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 text-xs leading-relaxed text-amber-100">
+            <p className="font-bold">Android ネイティブBLE診断モード</p>
+            <p className="mt-1 text-amber-100/75">
+              V3の検出・接続と入力確認を行います。rootなしで別アプリにDUALSHOCK 4として認識させる機能はありません。
+            </p>
+            {nativePacketInfo && (
+              <div className="mt-2 space-y-1 rounded-lg bg-black/20 p-2 font-mono text-[11px] text-cyan-200">
+                <div>受信: {nativePacketInfo.count}件 / 直近 {nativePacketInfo.size} bytes</div>
+                <div className="break-all">特性: {nativePacketInfo.characteristic}</div>
+                <div className="break-all">HEX: {nativePacketInfo.hex}</div>
+                {nativePacketInfo.size !== 16 && <div className="font-sans text-amber-200">16バイト形式と異なるため、ボタン解析は保留中です。</div>}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Dynamic Tab Views */}
         {activeTab === 'visualizer' && (
