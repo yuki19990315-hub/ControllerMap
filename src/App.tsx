@@ -170,7 +170,7 @@ export default function App() {
             hex: bytes.slice(0, 32).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' '),
           });
         }
-        if (selectedProtocol === 'SHOOTING_PLUS_V3' && bytes.length === 16) {
+        if (selectedProtocol === 'SHOOTING_PLUS_V3' && bytes.length === 16 && packet.characteristic.toLowerCase() === '0000ffe1-0000-1000-8000-00805f9b34fb') {
           handleInjectRawPacket(bytes);
         }
       }),
