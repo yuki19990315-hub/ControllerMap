@@ -7,6 +7,8 @@ export interface NativeBleDevice {
   address: string;
   name: string;
   rssi: number;
+  likelyV3?: boolean;
+  candidateReason?: string;
 }
 
 export interface NativePacket {
