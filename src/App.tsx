@@ -8,6 +8,9 @@ import {
   ScreenMappingNode,
 } from './types/controller';
 import { PRESET_PROFILES } from './utils/presets';
+import { makeGameProfile, readGameProfiles, writeGameProfiles, MAX_PROFILES } from './utils/profileStorage';
+import { GameProfiles } from './components/GameProfiles';
+import { ControllerLab } from './components/ControllerLab';
 import { isNativeAndroid, nativeController } from './utils/nativeController';
 import { uinputBridge } from './utils/uinputBridge';
 import type { UinputStatus } from './utils/uinputBridge';
@@ -42,7 +45,31 @@ import {
 export default function App() {
   const [targetController, setTargetController] = useState<TargetControllerType>('DS4');
   const [activeTab, setActiveTab] = useState<'visualizer' | 'remapper' | 'mapper' | 'calibration' | 'telemetry' | 'bridge'>('visualizer');
-  const [currentProfile, setCurrentProfile] = useState<MappingProfile>(PRESET_PROFILES[0]);
+  const [currentProfile, setCurrentProfile] = useState<MappingProfile>(() => readGameProfiles()[0] || PRESET_PROFILES[0]);
+  const [savedProfiles, setSavedProfiles] = useState<MappingProfile[]>(readGameProfiles);
+
+  useEffect(() => { writeGameProfiles(savedProfiles); }, [savedProfiles]);
+
+  const applyGameProfile = (profile: MappingProfile) => {
+    setCurrentProfile(JSON.parse(JSON.stringify(profile)) as MappingProfile);
+  };
+
+  const saveGameProfile = (name: string) => {
+    const existing = savedProfiles.find(p => p.id === currentProfile.id);
+    const normalized = name.trim().slice(0, 48);
+    if (!normalized) return;
+    if (!existing && savedProfiles.length >= MAX_PROFILES) return;
+    const next: MappingProfile = existing && existing.name === normalized
+      ? { ...currentProfile, name: normalized, gameTitle: normalized }
+      : makeGameProfile(currentProfile, normalized);
+    setSavedProfiles(prev => [...prev.filter(p => p.id !== next.id), next]);
+    setCurrentProfile(next);
+  };
+
+  const removeGameProfile = (id: string) => {
+    setSavedProfiles(prev => prev.filter(p => p.id !== id));
+    if (currentProfile.id === id) setCurrentProfile(PRESET_PROFILES[0]);
+  };
   const [gamepadState, setGamepadState] = useState<GamepadState>(createInitialGamepadState());
   const [connectedDevices, setConnectedDevices] = useState<ConnectedDevice[]>([]);
   const [selectedProtocol, setSelectedProtocol] = useState<InputProtocolType>('SHOOTING_PLUS_V3');
@@ -725,6 +752,10 @@ export default function App() {
               onStickMove={handleStickMove}
             />
 
+            <ControllerLab devices={connectedDevices} state={gamepadState} />
+            <GameProfiles current={currentProfile} saved={savedProfiles}
+              onApply={applyGameProfile} onSave={saveGameProfile} onRemove={removeGameProfile} />
+
             {/* Touch-friendly quick actions, secondary to the live controller. */}
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <button type="button" onClick={() => setActiveTab('remapper')} className="group flex min-h-[104px] flex-col items-start justify-between rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.07] p-4 text-left transition hover:bg-cyan-400/15">
@@ -748,12 +779,16 @@ export default function App() {
         )}
 
         {activeTab === 'remapper' && (
-          <V3ButtonRemapper
-            profile={currentProfile}
-            setProfile={setCurrentProfile}
-            targetController={targetController}
-            gamepadState={gamepadState}
-          />
+          <div className="space-y-4">
+            <GameProfiles current={currentProfile} saved={savedProfiles}
+              onApply={applyGameProfile} onSave={saveGameProfile} onRemove={removeGameProfile} />
+            <V3ButtonRemapper
+              profile={currentProfile}
+              setProfile={setCurrentProfile}
+              targetController={targetController}
+              gamepadState={gamepadState}
+            />
+          </div>
         )}
 
         {activeTab === 'mapper' && (
@@ -776,11 +811,14 @@ export default function App() {
         )}
 
         {activeTab === 'telemetry' && (
-          <PacketInspector
-            gamepadState={gamepadState}
-            targetController={targetController}
-            onInjectRawPacket={handleInjectRawPacket}
-          />
+          <div className="space-y-4">
+            <ControllerLab devices={connectedDevices} state={gamepadState} />
+            <PacketInspector
+              gamepadState={gamepadState}
+              targetController={targetController}
+              onInjectRawPacket={handleInjectRawPacket}
+            />
+          </div>
         )}
 
         {activeTab === 'bridge' && (
