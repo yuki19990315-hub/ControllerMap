@@ -39,6 +39,8 @@ export interface NativeController {
     message: string;
   }>;
   systemGamepads(): Promise<{ devices: SystemGamepad[] }>;
+  connectionKeepAliveStatus(): Promise<{ active: boolean; gattConnected: boolean; hasActiveGatt: boolean }>;
+  setConnectionKeepAlive(options: { enabled: boolean }): Promise<{ active: boolean }>;
   scan(): Promise<void>;
   stopScan(): Promise<void>;
   connect(options: { address: string; name: string }): Promise<void>;
