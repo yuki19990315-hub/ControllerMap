@@ -3,6 +3,7 @@ apply plugin: 'com.android.application'
 android {
     namespace = "com.crosspad.controller"
     compileSdk = rootProject.ext.compileSdkVersion
+    ndkVersion "27.2.12479018"
     defaultConfig {
         applicationId "com.crosspad.controller"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -18,6 +19,15 @@ android {
     }
     buildFeatures {
         aidl true
+    }
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+        }
+    }
+    packagingOptions {
+        // Shizuku's shell-UID UserService loads the library from its installed path.
+        jniLibs.useLegacyPackaging = true
     }
     buildTypes {
         release {

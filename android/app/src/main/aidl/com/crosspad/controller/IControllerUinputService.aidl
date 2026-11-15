@@ -6,5 +6,9 @@ interface IControllerUinputService {
     boolean start() = 2;
     void submit(String stateJson) = 3;
     void stop() = 4;
+    String joyConProbe(String nativeLibraryPath) = 5;
+    String joyConStart(String nativeLibraryPath) = 6;
+    String joyConStatus() = 7;
+    void joyConStop() = 8;
     void destroy() = 16777114;
 }

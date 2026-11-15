@@ -97,6 +97,7 @@ public class UinputUserService extends IControllerUinputService.Stub {
 
     @Override
     public synchronized boolean start() {
+        joyConStop();
         stop();
         try {
             if (!new File("/dev/uinput").canWrite()) return false;
@@ -117,6 +118,42 @@ public class UinputUserService extends IControllerUinputService.Stub {
             stop();
             return false;
         }
+    }
+
+    @Override
+    public synchronized String joyConProbe(String nativeLibraryPath) {
+        String error = JoyConNativeBridge.load(nativeLibraryPath);
+        return error.isEmpty() ? JoyConNativeBridge.nativeProbe() : errorJson(error);
+    }
+
+    @Override
+    public synchronized String joyConStart(String nativeLibraryPath) {
+        String error = JoyConNativeBridge.load(nativeLibraryPath);
+        if (!error.isEmpty()) return errorJson(error);
+        stop(); // Never leave the experimental DS4 and combined Joy-Con pads running together.
+        return JoyConNativeBridge.nativeStart();
+    }
+
+    @Override
+    public synchronized String joyConStatus() {
+        return JoyConNativeBridge.isLoaded()
+            ? JoyConNativeBridge.nativeStatus()
+            : errorJson("Joy-Conブリッジはまだ起動していません");
+    }
+
+    @Override
+    public synchronized void joyConStop() {
+        if (JoyConNativeBridge.isLoaded()) JoyConNativeBridge.nativeStop();
+    }
+
+    private static String errorJson(String message) {
+        JSONObject status = new JSONObject();
+        try {
+            status.put("active", false);
+            status.put("supported", false);
+            status.put("message", message);
+        } catch (Exception ignored) { }
+        return status.toString();
     }
 
     private void appendChanged(JSONArray events, String kind, String axis, int value) throws Exception {
@@ -193,6 +230,7 @@ public class UinputUserService extends IControllerUinputService.Stub {
 
     @Override
     public void destroy() {
+        joyConStop();
         stop();
         System.exit(0);
     }

@@ -1,12 +1,12 @@
 # CrossPad Converter: スマホコントローラー to DUALSHOCK / Switch
 
-スマホ用Bluetoothコントローラーの入力を診断・マッピングするツールです。Android版ではネイティブBLE通信に加え、**Shizuku + Android uinput経由の実験的な仮想DS4互換ゲームパッド**を試せます。V3の実機入力形式、DS4互換性、別ゲームでの利用は未検証です。
+スマホ用Bluetoothコントローラーの入力を診断・マッピングするツールです。Android版ではネイティブBLE通信に加え、**Shizuku + Android uinput経由の実験的な仮想DS4互換ゲームパッド**と**Switch 1 Joy-Con左右の統合**を試せます。V3の実機入力形式、DS4互換性、Joy-Con統合の実機動作、別ゲームでの利用は未検証です。
 
 ---
 
 ## 📱 Android APKの自動ビルド（GitHub Actions）
 
-このリポジトリは **React / Vite → Capacitor → Android APK** の順にGitHub Actionsでビルドします。Node.js 22、Java 21、Android SDK 36を使用します。
+このリポジトリは **React / Vite → Capacitor → Android APK** の順にGitHub Actionsでビルドします。Node.js 22、Java 21、Android SDK 36、NDK 27、CMake 3.22.1を使用します。
 
 ### スマホにインストールする手順
 
@@ -18,6 +18,30 @@
 - 成果物の保存期間は30日です。**Releasesには自動配布しません。**
 - 生成するのはテスト用の**デバッグ署名付きAPK**です。
 - このAPKはWebViewを基盤としますが、Bluetooth LE用の**ネイティブAndroidプラグインを追加済み**です。Android実機での動作検証は未実施です。WebHIDはWebViewからの利用を保証しません。
+---
+
+## Switch 1 Joy-Con左右を1つのゲームパッドにする（実験機能）
+
+Switch 1の純正Joy-Con（L/R）をそれぞれAndroidのBluetooth設定でペアリングしてから、ControllerMapの「Switch 1 Joy-Con 左右統合」を利用します。Web版やPWAでは利用できません。
+
+1. Joy-Conのレールにある小さなSYNCボタンを押し、AndroidのBluetooth設定で**左右2本をそれぞれ接続**します。
+2. [Shizuku](https://shizuku.rikka.app/download/)を起動し、ワイヤレスデバッグ経由で使用できる状態にします。
+3. ControllerMapで「Shizuku権限許可」→「左右を検出」を押します。
+4. **L・R両方「検出」、uinput「使用可能」**なら「Joy-Con統合開始」を押します。Androidの「付近のデバイス」権限を求められたら許可します。
+5. ゲームを開き、コントローラー入力を試します。終了後は「統合を停止」を押します。
+
+統合用のAndroidネイティブ処理は、Shizukuのshell権限で**左右のLinux evdev入力をEVIOCGRABで排他取得**し、`/dev/uinput`で独立した仮想ゲームパッド `CrossPad Joy-Con L+R` を作成します。ゲーム中はアプリの継続動作用通知を表示します。**実際のJoy-Con入力を読み取れるかどうか、バックグラウンドで動くかどうかは端末側のSELinux設定とドライバー次第**です。
+
+現時点の制限：
+
+- `057e:2006` / `057e:2007` と報告する**Switch 1純正Joy-Con**のLinux evdevデバイスを探します。機種によってAndroidの入力ドライバーが異なり、検出できないことがあります。
+- 左右のボタン・アナログスティック・十字キーの標準マッピングに対応。振動・ジャイロ・バッテリー残量・任意のボタン割当には未対応です。
+- Bluetooth切断後は一度統合が停止します。再接続後に開始し直してください。
+- **Nothing Phone (4a) Pro / Android 17、およびWarframe Androidでの実機テストは未実施**です。成功を保証しません。未検出や権限エラーが出た場合は画面の診断結果を確認してください。
+- 以前の「仮想DS4」試験と同時使用はできません。Joy-Conを開始すると仮想DS4の試験入力は自動停止します。
+
+参考：Linux本家の [`hid-nintendo.c`](https://github.com/torvalds/linux/blob/master/drivers/hid/hid-nintendo.c)（入力イベントのキー割当）、[Android uinput](https://android.googlesource.com/platform/frameworks/base/+/HEAD/cmds/uinput/README.md)、[Shizuku公式API](https://github.com/RikkaApps/Shizuku-API)。このJoy-Con統合処理は独自実装で、第三者のJoy-Conアプリのソースコードを取り込んでいません。
+
 ---
 
 ## Android（root不要）でのBLE入力診断
