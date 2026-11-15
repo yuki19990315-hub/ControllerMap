@@ -11,6 +11,7 @@ import { PRESET_PROFILES } from './utils/presets';
 import { makeGameProfile, readGameProfiles, writeGameProfiles, MAX_PROFILES } from './utils/profileStorage';
 import { GameProfiles } from './components/GameProfiles';
 import { ControllerLab } from './components/ControllerLab';
+import { JoyConMergePanel } from './components/JoyConMergePanel';
 import { isNativeAndroid, nativeController } from './utils/nativeController';
 import { uinputBridge } from './utils/uinputBridge';
 import type { UinputStatus } from './utils/uinputBridge';
@@ -741,6 +742,8 @@ export default function App() {
             </p>
           </div>
         )}
+
+        {isNativeAndroid && <JoyConMergePanel onMergeChange={() => { void refreshUinputStatus(); }} />}
 
         {/* Dynamic Tab Views */}
         {activeTab === 'visualizer' && (
